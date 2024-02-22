@@ -1,5 +1,7 @@
 import {Component, OnInit} from '@angular/core';
-import {fromEvent, interval, noop, Observable, timer} from "rxjs";
+import {interval, merge} from "rxjs";
+import {map} from "rxjs/operators";
+
 
 @Component({
   selector: 'about',
@@ -12,24 +14,10 @@ export class AboutComponent implements OnInit {
   }
 
   ngOnInit() {
-
-    const http$ = new Observable(observer => {
-      fetch('/api/courses')
-        .then(res => res.json())
-        .then(data => {
-          observer.next(data)
-          observer.complete()
-        })
-        .catch(error => {
-          observer.error(error)
-        })
-    })
-
-    http$.subscribe(
-      courses => console.log(courses),
-      noop,
-      ()=>console.log('completed')
-    )
+    const interval1$ = interval(1000);
+    const interva2$ = interval1$.pipe(map(val => val * 10));
+    const result$ = merge(interval1$, interva2$);
+    result$.subscribe(console.log)
   }
 
 }
