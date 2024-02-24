@@ -1,22 +1,11 @@
 import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {ActivatedRoute} from "@angular/router";
 import {Course} from "../model/course";
-import {
-  debounceTime,
-  distinctUntilChanged,
-  startWith,
-  tap,
-  delay,
-  map,
-  concatMap,
-  switchMap,
-  withLatestFrom,
-  concatAll, shareReplay
-} from 'rxjs/operators';
-import {merge, fromEvent, Observable, concat} from 'rxjs';
+import {debounceTime, distinctUntilChanged, map, startWith, switchMap, tap} from 'rxjs/operators';
+import {forkJoin, fromEvent, Observable} from 'rxjs';
 import {Lesson} from '../model/lesson';
 import {createHttpObservable} from "../common/util";
-import * as console from "console";
+import {debug, RxJsLoggingLevel, setRxJsLoggingLevel} from "../common/debug";
 
 
 @Component({
@@ -43,25 +32,33 @@ export class CourseComponent implements OnInit, AfterViewInit {
 
     this.courseId = this.route.snapshot.params['id'];
 
-    this.course$ = createHttpObservable(`api/courses/${this.courseId}`);
+    const course$ = createHttpObservable(`/api/courses/${this.courseId}`);
+    const lessons$ = this.loadLessons();
+
+    forkJoin([course$, lessons$])
+      .pipe(
+        tap(([course, lessons]) => {
+          console.log(course, lessons);
+        })
+      )
+      .subscribe()
   }
 
   ngAfterViewInit() {
-    const searchLessons$: Observable<Lesson[]> = fromEvent<any>(this.input.nativeElement, 'keyup')
+    this.lessons$ = fromEvent<any>(this.input.nativeElement, 'keyup')
       .pipe(
         map((event: any) => event.target.value),
+        startWith(''),
+        debug(RxJsLoggingLevel.TRACE, 'search'),
         debounceTime(400),
         distinctUntilChanged(),
-        switchMap(search => this.loadLessons(search))
+        switchMap(search => this.loadLessons(search)),
+        debug(RxJsLoggingLevel.DEBUG, 'lessons value')
       )
-
-    const initialLessons$: Observable<Lesson[]> = this.loadLessons()
-
-    this.lessons$ = concat(initialLessons$, searchLessons$)
   }
 
   loadLessons(search: string = ''): Observable<Lesson[]> {
-    return this.lessons$ = createHttpObservable(`/api/lessons?courseId=${this.courseId}&pageSize=100&filter=${search}`)
+    return createHttpObservable(`/api/lessons?courseId=${this.courseId}&pageSize=100&filter=${search}`)
       .pipe(
         map(res => res["payload"])
       )
