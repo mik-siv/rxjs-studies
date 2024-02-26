@@ -32,14 +32,12 @@ export class CourseComponent implements OnInit, AfterViewInit {
 
     this.courseId = this.route.snapshot.params['id'];
 
-    const course$ = createHttpObservable(`/api/courses/${this.courseId}`);
-    const lessons$ = this.loadLessons();
+    this.course$ = createHttpObservable(`/api/courses/${this.courseId}`);
+    this.lessons$ = this.loadLessons();
 
-    forkJoin([course$, lessons$])
+    forkJoin([this.course$, this.lessons$])
       .pipe(
-        tap(([course, lessons]) => {
-          console.log(course, lessons);
-        })
+        debug(RxJsLoggingLevel.DEBUG, `${this.course$}, ${this.lessons$}`)
       )
       .subscribe()
   }
